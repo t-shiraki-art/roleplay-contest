@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ロープレコンテスト採点システム</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#F0F4F8;--surface:#FFFFFF;--surface2:#F8FAFC;
+    --border:#E2E8F0;--border2:#CBD5E1;
+    --text:#0F172A;--text2:#475569;--text3:#94A3B8;
+    --blue:#2563EB;--blue-bg:#EFF6FF;--blue-border:#BFDBFE;
+    --green:#16A34A;--green-bg:#F0FDF4;--green-border:#BBF7D0;
+    --amber:#D97706;--amber-bg:#FFFBEB;--amber-border:#FDE68A;
+    --red:#DC2626;--red-bg:#FEF2F2;--red-border:#FECACA;
+    --radius:10px;--shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  }
+  body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+  #root{max-width:680px;margin:0 auto;padding:0 0 40px}
+  input,textarea{font-family:inherit;font-size:14px;color:var(--text);background:var(--surface);border:1.5px solid var(--border2);border-radius:8px;padding:9px 12px;width:100%;outline:none;transition:.15s}
+  input:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  button{font-family:inherit;cursor:pointer;transition:.15s}
+  input[type=range]{padding:0;border:none;background:transparent;accent-color:var(--blue)}
+  details summary{cursor:pointer;list-style:none}
+  details summary::-webkit-details-marker{display:none}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .spin{animation:spin .8s linear infinite;display:inline-block}
+  .fadeIn{animation:fadeIn .2s ease}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:var(--shadow)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 18px;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+  .btn-primary{background:var(--blue);color:#fff}
+  .btn-primary:hover{background:#1D4ED8}
+  .btn-outline{background:var(--surface);color:var(--text);border:1.5px solid var(--border2)}
+  .btn-outline:hover{background:var(--surface2);border-color:var(--text3)}
+  .btn-danger{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+  .badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px}
+  .badge-kaitori{background:var(--amber-bg);color:var(--amber)}
+  .badge-hanbai{background:var(--blue-bg);color:var(--blue)}
+  .badge-success{background:var(--green-bg);color:var(--green)}
+  .badge-gray{background:var(--surface2);color:var(--text2)}
+  .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+  .avatar{width:32px;height:32px;border-radius:50%;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--blue);overflow:hidden;flex-shrink:0}
+  .avatar img{width:100%;height:100%;object-fit:cover}
+  .tabs{display:flex;gap:6px;padding:0 20px;margin-bottom:0}
+  .tab{flex:1;padding:8px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text2);font-size:13px;font-weight:500}
+  .tab.active{background:var(--blue-bg);border-color:var(--blue-border);color:var(--blue);font-weight:600}
+  .score-bar{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:8px}
+  .score-bar-fill{height:100%;background:var(--blue);border-radius:3px;transition:width .2s}
+  .note-row{display:flex;gap:6px;align-items:flex-start;font-size:12px;margin-top:4px}
+  .note-label{background:var(--blue-bg);color:var(--blue);padding:1px 7px;border-radius:9px;font-size:11px;font-weight:600;white-space:nowrap;flex-shrink:0}
+
+  /* Login page */
+  .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#EFF6FF 0%,#F0FDF4 100%)}
+  .login-card{background:var(--surface);border-radius:20px;padding:36px 32px;max-width:380px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.1);text-align:center}
+  .oauth-btn{width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;border:1.5px solid var(--border2);background:var(--surface);color:var(--text);cursor:pointer}
+  .oauth-btn:hover{background:var(--surface2)}
+  .oauth-btn.google{border-color:#EA4335;color:#EA4335}
+  .oauth-btn.google:hover{background:#FEF2F2}
+  .oauth-btn.github{border-color:#24292F;color:#24292F}
+  .oauth-btn.github:hover{background:#F6F8FA}
+
+  /* Responsive */
+  @media(max-width:520px){
+    #root{padding:0 0 60px}
+    .topbar{padding:10px 14px}
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+const {useState,useEffect,useRef,useCallback}=React;
+const e=React.createElement;
+
+// ─── Supabase ────────────────────────────────────────────────
+const SB_URL="https://hcqjfylgsxbiglpnwgyp.supabase.co";
+const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjcWpmeWxnc3hiaWdscG53Z3lwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NDkyNDIsImV4cCI6MjA5NzQyNTI0Mn0.l3Avkl5UJaj0XSWkHfdOTYCv7-rx94QtNpquNV0X6oY";
+const sbClient=window.supabase.createClient(SB_URL,SB_KEY,{auth:{flowType:'pkce',autoRefreshToken:true,detectSessionInUrl:true}});
+
+async function sbQ(table,query={}){
+  let q=sbClient.from(table).select(query.select||"*");
+  if(query.eq)Object.entries(query.eq).forEach(([k,v])=>q=q.eq(k,v));
+  if(query.order)q=q.order(query.order,{ascending:true});
+  const {data,error}=await q;
+  if(error)throw error;
+  return data;
+}
+async function sbInsert(table,body){
+  const {data,error}=await sbClient.from(table).insert(body).select();
+  if(error)throw error;
+  return data;
+}
+async function sbDelete(table,id){
+  const {error}=await sbClient.from(table).delete().eq("id",id);
+  if(error)throw error;
+}
+async function sbUpsert(table,body,conflict){
+  const {data,error}=await sbClient.from(table).upsert(body,{onConflict:conflict}).select();
+  if(error)throw error;
+  return data;
+}
+
+// ─── Criteria ────────────────────────────────────────────────
+const CRITERIA={
+  kaitori:[
+    {id:"c1",num:"①",title:"第一印象・挨拶",tag:"清潔感・安心感",max:20,desc:"明るい表情・声のトーンで安心感があるか。清潔感のある服装・身だしなみで信頼できる第一印象を与えているか。",notes:[["🖥 WEB","カメラ越しの明るさ・背景・照明"],["🤝 対面","姿勢・入室時の立ち居振る舞い"]]},
+    {id:"c2",num:"②",title:"傾聴・共感",tag:"コミュニケーション姿勢",max:20,desc:"相手の話を遮らず、うなずきや共感の言葉で寄り添えているか。質問・相槌を交えた双方向の対話ができているか。",notes:[]},
+    {id:"c3",num:"③",title:"説明のわかりやすさ",tag:"誠実・透明性",max:20,desc:"専門用語を避け、資料や具体例でわかりやすく説明できているか。「誠実さ」や「透明感」が感じられるか。",notes:[]},
+    {id:"c4",num:"④",title:"安心宣言・JPUC説明",tag:"信頼構築",max:20,desc:"「5つの安心宣言」や「JPUC」について、自分の言葉で丁寧に説明できているか。お客様の不安を和らげる目的が明確か。",notes:[]},
+    {id:"c5",num:"⑤",title:"お客様への配慮",tag:"気遣い・温かみ",max:20,desc:"表情・間・トーンに温かみがあり、安心して話せる空気を作れているか。",notes:[["🖥 WEB","ラグや聞き取りに配慮し反応を確認"],["🤝 対面","目線・距離感・空間への気遣い"]]},
+    {id:"c6",num:"⑥",title:"締め・感謝の言葉",tag:"印象・信頼",max:20,desc:"最後に丁寧な感謝を伝え、ポジティブな印象で終われているか。次のステップへの雰囲気をつくれているか。",notes:[]}
+  ],
+  hanbai:[
+    {id:"c1",num:"①",title:"第一印象・挨拶",tag:"清潔感・安心感",max:20,desc:"明るく自然な笑顔とトーンで安心感を与え、信頼できる第一印象をつくれているか。",notes:[["🖥 WEB","カメラ越しの表情・背景"],["🤝 対面","入室時の笑顔・立ち居振る舞い"]]},
+    {id:"c2",num:"②",title:"コミュニケーション姿勢",tag:"傾聴・共感",max:20,desc:"相手の話を遮らず、うなずきや相槌で共感を示し、寄り添った対話ができているか。",notes:[]},
+    {id:"c3",num:"③",title:"説明のわかりやすさ",tag:"誠実・透明性",max:20,desc:"専門用語を避け、質問を通じてお客様のニーズや想いを丁寧に引き出せているか。",notes:[]},
+    {id:"c4",num:"④",title:"提案の姿勢・信頼感",tag:"誠実さ・一貫性",max:20,desc:"販売目的ではなく、お客様の立場に立った誠実な提案・説明ができているか。",notes:[]},
+    {id:"c5",num:"⑤",title:"雰囲気づくり・温かみ",tag:"親しみ・心地よさ",max:20,desc:"明るい笑顔・柔らかい表情・自然なユーモアで安心して話せる雰囲気を作れているか。",notes:[["🖥 WEB","画面越しでも自然な温かみ"],["🤝 対面","空間全体の雰囲気づくり"]]},
+    {id:"c6",num:"⑥",title:"締め・感謝の言葉",tag:"信頼・印象",max:20,desc:"丁寧な感謝を伝え、ポジティブで信頼感のある印象で終われているか。",notes:[]}
+  ]
+};
+const PL={kaitori:"買取",hanbai:"販売"};
+const totSc=(sc,pat)=>(CRITERIA[pat]||CRITERIA.kaitori).reduce((s,c)=>s+(sc[c.id]||0),0);
+function toEmbed(url){if(!url)return null;const d=url.match(/drive\.google\.com\/file\/d\/([^/?#\s]+)/);if(d)return`https://drive.google.com/file/d/${d[1]}/preview`;const y=url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);if(y)return`https://www.youtube.com/embed/${y[1]}`;return url;}
+
+// ─── UI helpers ──────────────────────────────────────────────
+function Spinner({size=16}){return e("i",{className:"ti ti-loader-2 spin",style:{fontSize:size}})}
+function PatBadge({pat,size=11}){return e("span",{className:`badge badge-${pat}`},PL[pat])}
+function ModeTag({t}){const m={online:"🖥 WEB",offline:"🤝 対面",hybrid:"🔀 ハイブリッド"};return e("span",{style:{fontSize:11,color:"var(--text3)"}},m[t]||"")}
+function BackBtn({onClick,label="ホーム"}){
+  return e("button",{onClick,className:"btn btn-outline",style:{padding:"7px 14px",fontSize:13}},
+    e("i",{className:"ti ti-arrow-left",style:{fontSize:14}}),label
+  );
+}
+
+// ─── Login Screen ─────────────────────────────────────────────
+function LoginScreen(){
+  const [loading,setLoading]=useState(null);
+  const redir=window.location.href.split("?")[0].split("#")[0];
+  async function login(provider){
+    setLoading(provider);
+    await sbClient.auth.signInWithOAuth({provider,options:{redirectTo:redir}});
+  }
+  return e("div",{className:"login-wrap"},
+    e("div",{className:"login-card fadeIn"},
+      e("div",{style:{width:60,height:60,borderRadius:16,background:"var(--blue-bg)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}},
+        e("i",{className:"ti ti-trophy",style:{fontSize:30,color:"var(--blue)"}})
+      ),
+      e("h1",{style:{fontSize:22,fontWeight:700,marginBottom:6}},"ロープレコンテスト"),
+      e("p",{style:{color:"var(--text2)",fontSize:13,marginBottom:28,lineHeight:1.6}},"採点システムへようこそ。\nGoogleまたはGitHubでサインインしてください。"),
+      e("button",{className:"oauth-btn google",onClick:()=>login("google"),disabled:!!loading},
+        loading==="google"?e(Spinner):e("svg",{width:18,height:18,viewBox:"0 0 48 48"},
+          e("path",{fill:"#EA4335",d:"M24 9.5c3.5 0 6.6 1.2 9 3.2l6.7-6.7C35.6 2.1 30.1 0 24 0 14.6 0 6.6 5.4 2.8 13.2l7.8 6C12.5 13 17.8 9.5 24 9.5z"}),
+          e("path",{fill:"#4285F4",d:"M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17z"}),
+          e("path",{fill:"#FBBC05",d:"M10.6 28.8A14.6 14.6 0 0 1 9.5 24c0-1.7.3-3.3.8-4.8l-7.8-6A24 24 0 0 0 0 24c0 3.9.9 7.5 2.5 10.8l8.1-6z"}),
+          e("path",{fill:"#34A853",d:"M24 48c6.1 0 11.2-2 14.9-5.5l-7.5-5.8c-2 1.4-4.6 2.3-7.4 2.3-6.2 0-11.5-4.2-13.4-9.8l-8.1 6.2C6.6 42.6 14.6 48 24 48z"})
+        ),
+        loading==="google"?"接続中…":"Googleでサインイン"
+      ),
+      e("button",{className:"oauth-btn github",onClick:()=>login("github"),disabled:!!loading},
+        loading==="github"?e(Spinner):e("svg",{width:18,height:18,viewBox:"0 0 24 24",fill:"#24292F"},
+          e("path",{d:"M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.2 11.4.6.1.82-.26.82-.57v-2c-3.34.72-4.04-1.61-4.04-1.61-.54-1.38-1.33-1.75-1.33-1.75-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.8 1.3 3.48 1 .1-.78.42-1.3.76-1.6-2.66-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.17 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 3-.4c1.02 0 2.04.14 3 .4 2.29-1.55 3.3-1.23 3.3-1.23.66 1.65.24 2.87.12 3.17.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.82 1.1.82 2.22v3.29c0 .32.22.68.83.57C20.57 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z"})
+        ),
+        loading==="github"?"接続中…":"GitHubでサインイン"
+      ),
+      e("p",{style:{fontSize:11,color:"var(--text3)",marginTop:16,lineHeight:1.6}},
+        "審査員としてのみご利用の場合もサインインが必要です。\n管理者権限はシステム管理者が付与します。"
+      )
+    )
+  );
+}
+
+// ─── Score Row ───────────────────────────────────────────────
+function ScoreRow({c,value,onChange}){
+  const pct=(value/c.max)*100;
+  return e("div",{className:"card",style:{marginBottom:10}},
+    e("div",{style:{display:"flex",gap:10,marginBottom:10}},
+      e("span",{style:{fontSize:18,lineHeight:"22px",minWidth:26}},c.num),
+      e("div",{style:{flex:1}},
+        e("div",{style:{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:3}},
+          e("span",{style:{fontWeight:600,fontSize:14}},c.title),
+          e("span",{className:"badge badge-gray"},c.tag)
+        ),
+        e("p",{style:{fontSize:12,color:"var(--text2)",lineHeight:1.6,margin:0}},c.desc),
+        c.notes.length>0&&e("div",{style:{marginTop:6,display:"flex",flexDirection:"column",gap:3}},
+          c.notes.map(([l,t],i)=>e("div",{key:i,className:"note-row"},
+            e("span",{className:"note-label"},l),
+            e("span",{style:{color:"var(--text2)"}},t)
+          ))
+        )
+      )
+    ),
+    e("div",{style:{display:"flex",alignItems:"center",gap:10}},
+      e("input",{type:"range",min:0,max:c.max,value:value,onChange:v=>onChange(Number(v.target.value)),step:1,style:{flex:1}}),
+      e("div",{style:{minWidth:56,textAlign:"center"}},
+        e("span",{style:{fontSize:20,fontWeight:700,color:"var(--blue)"}},value),
+        e("span",{style:{fontSize:11,color:"var(--text3)"}},"/"+c.max)
+      ),
+      e("div",{style:{display:"flex",gap:4}},
+        e("button",{onClick:()=>onChange(Math.max(0,value-1)),style:{width:28,height:28,border:"1px solid var(--border2)",borderRadius:6,background:"var(--surface2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}},e("i",{className:"ti ti-minus",style:{fontSize:13}})),
+        e("button",{onClick:()=>onChange(Math.min(c.max,value+1)),style:{width:28,height:28,border:"1px solid var(--border2)",borderRadius:6,background:"var(--surface2)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}},e("i",{className:"ti ti-plus",style:{fontSize:13}}))
+      )
+    ),
+    e("div",{className:"score-bar"},e("div",{className:"score-bar-fill",style:{width:pct+"%"}}))
+  );
+}
+
+// ─── AI Scoring ──────────────────────────────────────────────
+async function callAI(pattern,obs){
+  const crit=CRITERIA[pattern];
+  const prompt=`あなたは営業ロールプレイコンテストの審査補助AIです。審査員の観察メモをもとに、各採点項目のスコア（0〜20点）と総評を提案してください。\n【パターン】${PL[pattern]}\n【採点項目】\n${crit.map(c=>`${c.num} ${c.title}（${c.tag}）: ${c.desc}`).join("\n")}\n【観察メモ】\n${obs}\n\n以下のJSON形式のみで回答（前置き不要）:\n{"c1":15,"c2":17,"c3":14,"c4":16,"c5":18,"c6":15,"comment":"総評"}`;
+  const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:prompt}]})});
+  const data=await res.json();
+  return JSON.parse(data.content[0].text.trim().replace(/```json|```/g,"").trim());
+}
+
+// ─── Home Screen ─────────────────────────────────────────────
+function HomeScreen({setScreen,participants,isAdmin,user}){
+  const kc=participants.filter(p=>p.pattern==="kaitori").length;
+  const hc=participants.filter(p=>p.pattern==="hanbai").length;
+  return e("div",{className:"fadeIn"},
+    e("div",{style:{textAlign:"center",padding:"28px 20px 20px"}},
+      e("i",{className:"ti ti-trophy",style:{fontSize:44,color:"var(--blue)",display:"block",marginBottom:10}}),
+      e("h1",{style:{fontSize:24,fontWeight:700,marginBottom:6}},"ロープレコンテスト採点"),
+      e("p",{style:{color:"var(--text2)",fontSize:13}},"買取・販売 2パターン｜WEB・対面ハイブリッド"),
+      e("span",{className:"badge badge-success",style:{marginTop:8,fontSize:12}},"✦ AI採点補助つき")
+    ),
+    e("div",{style:{display:"flex",gap:10,padding:"0 20px",marginBottom:16}},
+      [["kaitori",kc],["hanbai",hc]].map(([p,cnt])=>
+        e("div",{key:p,className:"card",style:{flex:1,textAlign:"center",padding:"12px"}},
+          e(PatBadge,{pat:p,size:12}),
+          e("div",{style:{fontSize:26,fontWeight:700,margin:"6px 0 2px"}},cnt),
+          e("div",{style:{fontSize:11,color:"var(--text3)"}},"名登録")
+        )
+      )
+    ),
+    e("div",{style:{display:"flex",flexDirection:"column",gap:10,padding:"0 20px"}},
+      e("button",{onClick:()=>setScreen("judge"),className:"card",style:{display:"flex",alignItems:"center",gap:14,padding:"16px",textAlign:"left",border:"1px solid var(--border)",cursor:"pointer",background:"var(--surface)"}},
+        e("div",{style:{width:44,height:44,borderRadius:12,background:"var(--blue-bg)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
+          e("i",{className:"ti ti-pencil",style:{fontSize:22,color:"var(--blue)"}})
+        ),
+        e("div",null,
+          e("div",{style:{fontWeight:600,fontSize:15,marginBottom:2}},"採点する"),
+          e("div",{style:{fontSize:12,color:"var(--text2)"}},"動画を見てAI補助付きで採点できます")
+        )
+      ),
+      isAdmin&&e("button",{onClick:()=>setScreen("results"),className:"card",style:{display:"flex",alignItems:"center",gap:14,padding:"16px",textAlign:"left",border:"1px solid var(--border)",cursor:"pointer",background:"var(--surface)"}},
+        e("div",{style:{width:44,height:44,borderRadius:12,background:"var(--green-bg)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
+          e("i",{className:"ti ti-chart-bar",style:{fontSize:22,color:"var(--green)"}})
+        ),
+        e("div",{style:{flex:1}},
+          e("div",{style:{fontWeight:600,fontSize:15,marginBottom:2}},"集計結果を見る"),
+          e("div",{style:{fontSize:12,color:"var(--text2)"}},"全審査員の採点を集計・ランキング表示")
+        ),
+        e("span",{className:"badge badge-success"},"管理者")
+      ),
+      isAdmin&&e("button",{onClick:()=>setScreen("admin"),className:"card",style:{display:"flex",alignItems:"center",gap:14,padding:"14px",textAlign:"left",border:"1px solid var(--border)",cursor:"pointer",background:"var(--surface)"}},
+        e("div",{style:{width:44,height:44,borderRadius:12,background:"var(--surface2)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
+          e("i",{className:"ti ti-settings",style:{fontSize:22,color:"var(--text2)"}})
+        ),
+        e("div",{style:{flex:1}},
+          e("div",{style:{fontWeight:600,fontSize:15,marginBottom:2}},"管理者設定"),
+          e("div",{style:{fontSize:12,color:"var(--text2)"}},"参加者・パターン・動画の登録")
+        ),
+        e("span",{className:"badge badge-success"},"管理者")
+      ),
+      !isAdmin&&e("div",{style:{background:"var(--surface2)",border:"1px solid var(--border)",borderRadius:10,padding:"12px 14px",fontSize:12,color:"var(--text2)",textAlign:"center"}},
+        e("i",{className:"ti ti-lock",style:{marginRight:4,fontSize:13}}),
+        "集計結果・管理者設定は管理者権限が必要です"
+      )
+    )
+  );
+}
+
+// ─── Admin Screen ─────────────────────────────────────────────
+function AdminScreen({setScreen,participants,setParticipants}){
+  const [nm,setNm]=useState("");const[url,setUrl]=useState("");const[mtype,setMtype]=useState("online");const[pat,setPat]=useState("kaitori");const[saving,setSaving]=useState(false);const[msg,setMsg]=useState({text:"",ok:true});
+  async function add(){
+    if(!nm.trim())return;
+    setSaving(true);
+    try{
+      const r=await sbInsert("rp_participants",{name:nm.trim(),url:url.trim(),type:mtype,pattern:pat});
+      setParticipants(prev=>[...prev,...r]);
+      setNm("");setUrl("");setMsg({text:"追加しました",ok:true});setTimeout(()=>setMsg({text:"",ok:true}),2500);
+    }catch(err){setMsg({text:"エラー: "+err.message,ok:false});}
+    setSaving(false);
+  }
+  async function remove(id){
+    try{await sbDelete("rp_participants",id);setParticipants(prev=>prev.filter(p=>p.id!==id));}
+    catch(err){alert("削除エラー: "+err.message);}
+  }
+  return e("div",{className:"fadeIn",style:{padding:"0 20px"}},
+    e("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:16,paddingTop:16}},
+      e(BackBtn,{onClick:()=>setScreen("home")}),
+      e("h2",{style:{fontSize:18,fontWeight:700,flex:1}},"管理者設定"),
+      e("span",{className:"badge badge-success"},e("i",{className:"ti ti-lock-open",style:{fontSize:11,marginRight:3}}),"認証済み")
+    ),
+    e("div",{className:"card",style:{marginBottom:12}},
+      e("h3",{style:{fontSize:15,fontWeight:600,marginBottom:14}},"参加者を追加"),
+      e("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+        e("div",null,
+          e("label",{style:{fontSize:12,color:"var(--text2)",display:"block",marginBottom:4}},"ロープレパターン *"),
+          e("div",{style:{display:"flex",gap:6}},
+            ["kaitori","hanbai"].map(v=>e("button",{key:v,onClick:()=>setPat(v),style:{flex:1,padding:"9px",border:`1.5px solid ${pat===v?"var(--blue)":"var(--border2)"}`,borderRadius:9,background:pat===v?"var(--blue-bg)":"var(--surface)",color:pat===v?"var(--blue)":"var(--text2)",fontWeight:pat===v?600:400,cursor:"pointer",fontSize:14}},PL[v]))
+          )
+        ),
+        e("div",null,e("label",{style:{fontSize:12,color:"var(--text2)",display:"block",marginBottom:4}},"参加者名 *"),e("input",{value:nm,onChange:v=>setNm(v.target.value),placeholder:"例：田中 花子",onKeyDown:v=>v.key==="Enter"&&add()})),
+        e("div",null,e("label",{style:{fontSize:12,color:"var(--text2)",display:"block",marginBottom:4}},"動画URL（Google Drive / YouTube）"),e("input",{value:url,onChange:v=>setUrl(v.target.value),placeholder:"https://drive.google.com/file/d/..."})),
+        e("div",null,
+          e("label",{style:{fontSize:12,color:"var(--text2)",display:"block",marginBottom:4}},"発表形式"),
+          e("div",{style:{display:"flex",gap:6}},
+            [["online","🖥 WEB"],["offline","🤝 対面"],["hybrid","🔀 ハイブリッド"]].map(([v,l])=>e("button",{key:v,onClick:()=>setMtype(v),style:{flex:1,padding:"7px 4px",border:`1.5px solid ${mtype===v?"var(--blue)":"var(--border2)"}`,borderRadius:8,background:mtype===v?"var(--blue-bg)":"var(--surface)",color:mtype===v?"var(--blue)":"var(--text2)",fontWeight:mtype===v?600:400,cursor:"pointer",fontSize:12}},l))
+          )
+        ),
+        msg.text&&e("div",{style:{padding:"8px 12px",borderRadius:8,background:msg.ok?"var(--green-bg)":"var(--red-bg)",color:msg.ok?"var(--green)":"var(--red)",fontSize:13}},msg.text),
+        e("button",{onClick:add,disabled:saving,className:"btn btn-primary",style:{width:"100%",padding:"11px",justifyContent:"center"}},saving?e(Spinner):null,"追加する")
+      )
+    ),
+    e("div",{className:"card"},
+      e("h3",{style:{fontSize:15,fontWeight:600,marginBottom:14}},"参加者一覧（"+participants.length+"名）"),
+      participants.length===0
+        ?e("p",{style:{color:"var(--text3)",textAlign:"center",padding:"20px 0",fontSize:14}},"まだ参加者が登録されていません")
+        :participants.map((p,i)=>e("div",{key:p.id,style:{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:"1px solid var(--border)"}},
+          e("span",{style:{color:"var(--text3)",minWidth:22,fontSize:13}},i+1+"."),
+          e("div",{style:{flex:1}},
+            e("div",{style:{fontWeight:600,fontSize:14,display:"flex",alignItems:"center",gap:6}},p.name,e(PatBadge,{pat:p.pattern||"kaitori"})),
+            e("div",{style:{fontSize:11,color:"var(--text3)",marginTop:2}},e(ModeTag,{t:p.type}),p.url?" · 動画あり":"")
+          ),
+          e("button",{onClick:()=>remove(p.id),className:"btn btn-danger",style:{padding:"4px 10px",fontSize:12}},"削除")
+        ))
+    )
+  );
+}
+
+// ─── Judge Screen ─────────────────────────────────────────────
+function JudgeScreen({setScreen,participants,allScores,setAllScores,user}){
+  const [selPid,setSelPid]=useState(null);const[scores,setScores]=useState({});const[comment,setComment]=useState("");const[saved,setSaved]=useState(false);const[saving,setSaving]=useState(false);const[filterPat,setFilterPat]=useState("all");const[aiLoading,setAiLoading]=useState(false);const[aiNotes,setAiNotes]=useState("");const[showAI,setShowAI]=useState(false);const[aiResult,setAiResult]=useState(null);
+  const judgeName=user?.user_metadata?.full_name||user?.user_metadata?.name||user?.email||"審査員";
+  const selP=participants.find(p=>p.id===selPid);const pat=selP?.pattern||"kaitori";const crit=CRITERIA[pat];
+  function pickP(pid){setSelPid(pid);setSaved(false);setShowAI(false);setAiResult(null);setAiNotes("");const ex=allScores[pid]?.[judgeName];setScores(ex?{...ex.scores}:{});setComment(ex?ex.comment||"":"");}
+  async function submit(){
+    setSaving(true);
+    try{
+      await sbUpsert("rp_scores",{participant_id:selPid,judge_name:judgeName,pattern:pat,scores,comment,updated_at:new Date().toISOString()},"participant_id,judge_name");
+      setAllScores(prev=>({...prev,[selPid]:{...prev[selPid],[judgeName]:{scores,comment}}}));
+      setSaved(true);
+    }catch(err){alert("保存エラー: "+err.message);}
+    setSaving(false);
+  }
+  async function runAI(){if(!aiNotes.trim()){alert("観察メモを入力してください");return;}setAiLoading(true);setAiResult(null);try{const r=await callAI(pat,aiNotes);setAiResult(r);}catch(err){alert("AI採点エラー: "+err.message);}setAiLoading(false);}
+  function applyAI(){if(!aiResult)return;const ns={};crit.forEach(c=>{if(aiResult[c.id]!==undefined)ns[c.id]=Math.min(c.max,Math.max(0,Number(aiResult[c.id])||0));});setScores(ns);if(aiResult.comment)setComment(aiResult.comment);setShowAI(false);}
+
+  if(!selPid){
+    const list=filterPat==="all"?participants:participants.filter(p=>(p.pattern||"kaitori")===filterPat);
+    return e("div",{className:"fadeIn",style:{padding:"0 20px"}},
+      e("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingTop:16}},
+        e(BackBtn,{onClick:()=>setScreen("home")}),
+        e("h2",{style:{fontSize:18,fontWeight:700,flex:1}},"採点"),
+        e("span",{style:{fontSize:12,color:"var(--text2)"}}),
+        user?.user_metadata?.avatar_url&&e("div",{className:"avatar"},e("img",{src:user.user_metadata.avatar_url,alt:""}))
+      ),
+      e("div",{style:{background:"var(--blue-bg)",border:"1px solid var(--blue-border)",borderRadius:10,padding:"10px 14px",marginBottom:12,fontSize:13,color:"var(--blue)"}},
+        e("i",{className:"ti ti-user",style:{marginRight:6,fontSize:14}}),judgeName," さんとして採点します"
+      ),
+      e("div",{style:{display:"flex",gap:6,marginBottom:12}},
+        [["all","すべて"],["kaitori","買取"],["hanbai","販売"]].map(([v,l])=>e("button",{key:v,onClick:()=>setFilterPat(v),className:"tab"+(filterPat===v?" active":"")},l))
+      ),
+      list.length===0?e("div",{className:"card",style:{textAlign:"center",padding:"32px",color:"var(--text3)"}},e("i",{className:"ti ti-clipboard",style:{fontSize:32,display:"block",marginBottom:8}}),"参加者が登録されていません"):
+      list.map((p,i)=>{
+        const done=!!(allScores[p.id]?.[judgeName]);
+        const dsc=done?totSc(allScores[p.id][judgeName].scores||{},p.pattern||"kaitori"):null;
+        return e("button",{key:p.id,onClick:()=>pickP(p.id),className:"card",style:{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"14px 16px",marginBottom:8,textAlign:"left",cursor:"pointer",border:`1px solid ${done?"var(--green-border)":"var(--border)"}`,background:done?"var(--green-bg)":"var(--surface)"}},
+          e("span",{style:{color:"var(--text3)",minWidth:24,fontSize:13}},i+1+"."),
+          e("div",{style:{flex:1}},
+            e("div",{style:{fontWeight:600,fontSize:15,display:"flex",alignItems:"center",gap:6}},p.name,e(PatBadge,{pat:p.pattern||"kaitori"})),
+            e("div",{style:{fontSize:12,color:"var(--text3)",marginTop:2}},e(ModeTag,{t:p.type}))
+          ),
+          done?e("div",{style:{textAlign:"right"}},e("div",{style:{fontWeight:700,fontSize:16,color:"var(--green)"}},dsc+"点"),e("div",{style:{fontSize:11,color:"var(--green)"}},"採点済み ✓")):e("i",{className:"ti ti-chevron-right",style:{color:"var(--text3)",fontSize:18}})
+        );
+      })
+    );
+  }
+
+  const t=totSc(scores,pat);const alreadySaved=!!(allScores[selPid]?.[judgeName]);const embedUrl=toEmbed(selP?.url);
+  const patColor=pat==="kaitori"?{bg:"var(--amber-bg)",text:"var(--amber)",border:"var(--amber-border)",fill:"#D97706"}:{bg:"var(--blue-bg)",text:"var(--blue)",border:"var(--blue-border)",fill:"var(--blue)"};
+  return e("div",{className:"fadeIn",style:{padding:"0 20px"}},
+    e("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingTop:16}},
+      e(BackBtn,{onClick:()=>{setSelPid(null);setSaved(false);},label:"一覧"}),
+      e("div",{style:{flex:1}},
+        e("div",{style:{fontWeight:600,fontSize:15,display:"flex",alignItems:"center",gap:6}},selP?.name,e(PatBadge,{pat})),
+        e("div",{style:{fontSize:12,color:"var(--text3)"}},e(ModeTag,{t:selP?.type}))
+      )
+    ),
+    embedUrl&&e("div",{className:"card",style:{overflow:"hidden",padding:0,marginBottom:10}},
+      e("iframe",{src:embedUrl,style:{width:"100%",aspectRatio:"16/9",display:"block",border:"none"},allowFullScreen:true})
+    ),
+    e("div",{style:{background:patColor.bg,border:`1px solid ${patColor.border}`,borderRadius:9,padding:"8px 14px",marginBottom:10,fontSize:13,color:patColor.text,fontWeight:600}},"📋 "+PL[pat]+"パターン　各20点 × 6項目 ＝ 合計120点"),
+    e("div",{className:"card",style:{marginBottom:10,border:"1px solid var(--green-border)"}},
+      e("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
+        e("div",{style:{display:"flex",alignItems:"center",gap:8}},
+          e("i",{className:"ti ti-robot",style:{fontSize:18,color:"var(--green)"}}),
+          e("span",{style:{fontWeight:600,fontSize:14}},"AI採点補助"),
+          e("span",{className:"badge badge-success"},"Beta")
+        ),
+        e("button",{onClick:()=>setShowAI(!showAI),style:{fontSize:12,color:"var(--blue)",background:"none",border:"none",cursor:"pointer",fontWeight:600}},showAI?"閉じる ×":"使う →")
+      ),
+      showAI&&e("div",{style:{marginTop:12}},
+        e("p",{style:{fontSize:12,color:"var(--text2)",marginBottom:8}},"動画を見ながら気づいたことをメモしてください。AIがスコアと総評を提案します。"),
+        e("textarea",{value:aiNotes,onChange:v=>setAiNotes(v.target.value),placeholder:"例：笑顔が自然で第一印象が良い。JPUC説明は少し早口だったが内容は正確。",style:{minHeight:80,resize:"vertical",marginBottom:8,fontSize:13}}),
+        aiResult&&e("div",{style:{background:"var(--green-bg)",border:"1px solid var(--green-border)",borderRadius:9,padding:12,marginBottom:8}},
+          e("div",{style:{fontSize:13,fontWeight:600,color:"var(--green)",marginBottom:8}},"✦ AI提案スコア"),
+          e("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}},
+            crit.map(c=>e("div",{key:c.id,style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:6,padding:"4px 10px",fontSize:13}},
+              e("span",{style:{color:"var(--text3)",marginRight:4}},c.num),
+              e("span",{style:{fontWeight:700,color:"var(--green)"}},aiResult[c.id]||0),
+              e("span",{style:{color:"var(--text3)",fontSize:11}},"/"+c.max)
+            ))
+          ),
+          aiResult.comment&&e("p",{style:{fontSize:12,color:"var(--text2)",lineHeight:1.6,margin:"0 0 8px"}},"💬 "+aiResult.comment),
+          e("button",{onClick:applyAI,className:"btn",style:{width:"100%",background:"var(--green)",color:"#fff",justifyContent:"center"}},"このスコアを反映する")
+        ),
+        e("button",{onClick:runAI,disabled:aiLoading,className:"btn",style:{width:"100%",background:"var(--green)",color:"#fff",justifyContent:"center",opacity:aiLoading?.7:1}},
+          aiLoading?e(React.Fragment,null,e(Spinner)," AIが採点中…"):e(React.Fragment,null,e("i",{className:"ti ti-sparkles",style:{fontSize:14}}),"AI採点を実行")
+        )
+      )
+    ),
+    crit.map(c=>e(ScoreRow,{key:c.id,c,value:scores[c.id]||0,onChange:v=>setScores(prev=>({...prev,[c.id]:v}))})),
+    e("div",{className:"card",style:{marginTop:4,marginBottom:10}},
+      e("label",{style:{fontSize:14,fontWeight:600,display:"block",marginBottom:8}},e("i",{className:"ti ti-message",style:{marginRight:6,fontSize:15,verticalAlign:-2}}),"コメント・フィードバック"),
+      e("textarea",{value:comment,onChange:v=>setComment(v.target.value),placeholder:"総評・改善点・特に良かった点などを記入してください",style:{minHeight:90,resize:"vertical"}})
+    ),
+    e("div",{className:"card",style:{border:`1px solid ${patColor.border}`,background:patColor.bg}},
+      e("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}},
+        e("div",null,
+          e("div",{style:{fontSize:12,color:"var(--text2)",marginBottom:2}},PL[pat]+" 合計点"),
+          e("div",{style:{fontSize:34,fontWeight:700,color:patColor.text}},t,e("span",{style:{fontSize:16,color:"var(--text3)",fontWeight:400}},"/120"))
+        ),
+        e("div",{style:{fontSize:11,color:"var(--text2)"}},
+          crit.map(c=>e("div",{key:c.id,style:{display:"flex",justifyContent:"space-between",gap:16,padding:"1px 0"}},
+            e("span",null,c.num," ",c.title.substring(0,7)+"…"),
+            e("span",{style:{fontWeight:600,color:patColor.text}},scores[c.id]||0,"/",c.max)
+          ))
+        )
+      ),
+      e("button",{onClick:submit,disabled:saving,className:"btn",style:{width:"100%",padding:12,justifyContent:"center",background:saved?"var(--green)":patColor.fill,color:"#fff",fontSize:15}},
+        saving?e(React.Fragment,null,e(Spinner)," 保存中…"):saved?"✓ 採点を保存しました！":alreadySaved?"採点を更新する":"採点を送信する"
+      ),
+      saved&&e("button",{onClick:()=>{setSelPid(null);setSaved(false);},className:"btn btn-outline",style:{width:"100%",marginTop:8,justifyContent:"center"}},"別の参加者を採点する →")
+    )
+  );
+}
+
+// ─── Results Screen ──────────────────────────────────────────
+function ResultsScreen({setScreen,participants,allScores,setAllScores}){
+  const [tab,setTab]=useState("all");const[loading,setLoading]=useState(false);
+  async function refresh(){
+    setLoading(true);
+    try{
+      const data=await sbQ("rp_scores",{select:"*"});
+      const map={};data.forEach(r=>{if(!map[r.participant_id])map[r.participant_id]={};map[r.participant_id][r.judge_name]={scores:r.scores,comment:r.comment};});
+      setAllScores(map);
+    }catch(err){alert("更新エラー: "+err.message);}
+    setLoading(false);
+  }
+  useEffect(()=>{refresh();},[]);
+  const list=tab==="all"?participants:participants.filter(p=>(p.pattern||"kaitori")===tab);
+  const results=list.map(p=>{const ptn=p.pattern||"kaitori";const judgeEntries=Object.entries(allScores[p.id]||{}).map(([judge,v])=>({judge,total:totSc(v.scores||{},ptn),scores:v.scores||{},comment:v.comment||""}));const avg=judgeEntries.length>0?judgeEntries.reduce((s,j)=>s+j.total,0)/judgeEntries.length:null;return{...p,ptn,judgeEntries,avg};}).sort((a,b)=>(b.avg||0)-(a.avg||0));
+  return e("div",{className:"fadeIn",style:{padding:"0 20px"}},
+    e("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingTop:16}},
+      e(BackBtn,{onClick:()=>setScreen("home")}),
+      e("h2",{style:{fontSize:18,fontWeight:700,flex:1}},"集計結果"),
+      e("span",{className:"badge badge-success",style:{marginRight:4}},e("i",{className:"ti ti-lock-open",style:{fontSize:11,marginRight:3}}),"認証済み"),
+      e("button",{onClick:refresh,disabled:loading,className:"btn btn-outline",style:{padding:"6px 10px",fontSize:13}},loading?e(Spinner):e("i",{className:"ti ti-refresh",style:{fontSize:14}})," 更新")
+    ),
+    e("div",{style:{display:"flex",gap:6,marginBottom:12}},
+      [["all","すべて"],["kaitori","買取"],["hanbai","販売"]].map(([v,l])=>e("button",{key:v,onClick:()=>setTab(v),className:"tab"+(tab===v?" active":"")},l))
+    ),
+    results.length===0?e("div",{className:"card",style:{textAlign:"center",padding:"32px",color:"var(--text3)"}},e("i",{className:"ti ti-chart-bar",style:{fontSize:36,display:"block",marginBottom:8}}),"まだ採点データがありません"):
+    results.map((p,rank)=>{
+      const crit=CRITERIA[p.ptn];
+      const pc=p.ptn==="kaitori"?{text:"var(--amber)",fill:"#D97706",border:"var(--amber-border)"}:{text:"var(--blue)",fill:"var(--blue)",border:"var(--blue-border)"};
+      return e("div",{key:p.id,className:"card",style:{marginBottom:10,border:`1px solid ${rank===0&&tab!=="all"?"#FCD34D":"var(--border)"}`}},
+        e("div",{style:{display:"flex",alignItems:"center",gap:12,marginBottom:p.judgeEntries.length>0?12:0}},
+          e("div",{style:{fontSize:rank<3?28:18,minWidth:36}},rank===0?"🥇":rank===1?"🥈":rank===2?"🥉":`${rank+1}.`),
+          e("div",{style:{flex:1}},
+            e("div",{style:{fontWeight:700,fontSize:16,display:"flex",alignItems:"center",gap:6}},p.name,e(PatBadge,{pat:p.ptn})),
+            e("div",{style:{fontSize:12,color:"var(--text3)",marginTop:2}},e(ModeTag,{t:p.type})," · ",p.judgeEntries.length,"名が採点")
+          ),
+          p.avg!=null&&e("div",{style:{textAlign:"right"}},
+            e("div",{style:{fontSize:28,fontWeight:700,color:pc.text}},p.avg.toFixed(1)),
+            e("div",{style:{fontSize:11,color:"var(--text3)"}},"平均点/120")
+          )
+        ),
+        p.judgeEntries.length>0&&e("div",{style:{background:"var(--surface2)",borderRadius:9,padding:12,marginBottom:8}},
+          crit.map(c=>{const av=p.judgeEntries.reduce((s,j)=>s+(j.scores[c.id]||0),0)/p.judgeEntries.length;return e("div",{key:c.id,style:{marginBottom:6}},
+            e("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:2}},e("span",{style:{color:"var(--text2)"}},c.num," ",c.title),e("span",{style:{fontWeight:600,color:pc.text}},av.toFixed(1),"/",c.max)),
+            e("div",{className:"score-bar"},e("div",{className:"score-bar-fill",style:{width:((av/c.max)*100)+"%",background:pc.fill}}))
+          );})
+        ),
+        p.judgeEntries.length>0&&e("details",{style:{fontSize:13}},
+          e("summary",{style:{color:"var(--text3)",padding:"4px 0",cursor:"pointer"}},"審査員別の詳細 ▾"),
+          e("div",{style:{marginTop:8,display:"flex",flexDirection:"column",gap:6}},
+            p.judgeEntries.map((j,i)=>e("div",{key:i,style:{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:8,padding:"10px 12px"}},
+              e("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:j.comment?4:0}},
+                e("span",{style:{fontWeight:600}},j.judge),e("span",{style:{color:pc.text,fontWeight:700}},j.total,"点")
+              ),
+              j.comment&&e("div",{style:{fontSize:12,color:"var(--text2)"}},e("i",{className:"ti ti-message",style:{marginRight:4,fontSize:13}}),j.comment)
+            ))
+          )
+        )
+      );
+    })
+  );
+}
+
+// ─── Topbar ──────────────────────────────────────────────────
+function Topbar({user,onLogout}){
+  const name=user?.user_metadata?.full_name||user?.user_metadata?.name||user?.email||"";
+  const avatar=user?.user_metadata?.avatar_url;
+  return e("div",{className:"topbar"},
+    e("i",{className:"ti ti-trophy",style:{fontSize:20,color:"var(--blue)"}}),
+    e("span",{style:{fontWeight:700,fontSize:15,flex:1}},"ロープレ採点"),
+    e("div",{className:"avatar"},avatar?e("img",{src:avatar,alt:""}):name.charAt(0).toUpperCase()),
+    e("span",{style:{fontSize:12,color:"var(--text2)",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},name),
+    e("button",{onClick:onLogout,className:"btn btn-outline",style:{padding:"5px 10px",fontSize:12}},
+      e("i",{className:"ti ti-logout",style:{fontSize:13}}),"ログアウト"
+    )
+  );
+}
+
+// ─── App ──────────────────────────────────────────────────────
+function App(){
+  const [session,setSession]=useState(undefined);
+  const [isAdmin,setIsAdmin]=useState(false);
+  const [participants,setParticipants]=useState([]);
+  const [allScores,setAllScores]=useState({});
+  const [screen,setScreen]=useState("home");
+  const [loading,setLoading]=useState(true);
+
+  useEffect(()=>{
+    sbClient.auth.getSession().then(({data:{session}})=>{
+      setSession(session);
+      if(session)init(session);
+      else setLoading(false);
+    });
+    const {data:{subscription}}=sbClient.auth.onAuthStateChange((_,session)=>{
+      setSession(session);
+      if(session)init(session);
+      else{setLoading(false);setIsAdmin(false);}
+    });
+    return ()=>subscription.unsubscribe();
+  },[]);
+
+  async function init(sess){
+    setLoading(true);
+    try{
+      const [ps,sc,adminRows]=await Promise.all([
+        sbQ("rp_participants",{order:"created_at"}),
+        sbQ("rp_scores",{select:"*"}),
+        sbQ("rp_admins",{eq:{email:sess.user.email}})
+      ]);
+      setParticipants(ps||[]);
+      const map={};(sc||[]).forEach(r=>{if(!map[r.participant_id])map[r.participant_id]={};map[r.participant_id][r.judge_name]={scores:r.scores,comment:r.comment};});
+      setAllScores(map);
+      setIsAdmin((adminRows||[]).length>0);
+    }catch(err){console.error(err);}
+    setLoading(false);
+  }
+
+  async function logout(){
+    await sbClient.auth.signOut();
+    setScreen("home");setIsAdmin(false);
+  }
+
+  if(session===undefined||loading){
+    return e("div",{style:{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12,color:"var(--text2)"}},
+      e(Spinner,{size:28}),e("p",{style:{fontSize:14}},"読み込み中…")
+    );
+  }
+  if(!session)return e(LoginScreen);
+
+  const props={setScreen,participants,setParticipants,allScores,setAllScores,isAdmin,user:session.user};
+  return e("div",null,
+    e(Topbar,{user:session.user,onLogout:logout}),
+    e("div",null,
+      screen==="home"&&e(HomeScreen,props),
+      screen==="admin"&&(isAdmin?e(AdminScreen,props):e(HomeScreen,props)),
+      screen==="judge"&&e(JudgeScreen,props),
+      screen==="results"&&(isAdmin?e(ResultsScreen,props):e(HomeScreen,props))
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(e(App));
+</script>
+</body>
+</html>
