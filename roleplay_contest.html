@@ -214,11 +214,13 @@ function ScoreRow({c,value,onChange}){
 }
 
 // ─── AI Scoring ──────────────────────────────────────────────
+const AI_PROXY="https://hcqjfylgsxbiglpnwgyp.supabase.co/functions/v1/ai-proxy";
 async function callAI(pattern,obs){
   const crit=CRITERIA[pattern];
   const prompt=`あなたは営業ロールプレイコンテストの審査補助AIです。審査員の観察メモをもとに、各採点項目のスコア（0〜20点）と総評を提案してください。\n【パターン】${PL[pattern]}\n【採点項目】\n${crit.map(c=>`${c.num} ${c.title}（${c.tag}）: ${c.desc}`).join("\n")}\n【観察メモ】\n${obs}\n\n以下のJSON形式のみで回答（前置き不要）:\n{"c1":15,"c2":17,"c3":14,"c4":16,"c5":18,"c6":15,"comment":"総評"}`;
-  const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:prompt}]})});
+  const res=await fetch(AI_PROXY,{method:"POST",headers:{"Content-Type":"application/json","apikey":SB_KEY},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:prompt}]})});
   const data=await res.json();
+  if(data.error)throw new Error(data.error);
   return JSON.parse(data.content[0].text.trim().replace(/```json|```/g,"").trim());
 }
 
