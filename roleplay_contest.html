@@ -625,32 +625,43 @@ function App(){
   const [loading,setLoading]=useState(true);
 
   useEffect(()=>{
+    // 初回のみinitを呼ぶためのフラグ
+    let initialized=false;
+
     sbClient.auth.getSession().then(({data:{session}})=>{
       setSession(session);
-      if(session)init(session);
+      if(session&&!initialized){initialized=true;init(session);}
       else setLoading(false);
     });
 
     const {data:{subscription}}=sbClient.auth.onAuthStateChange((event,session)=>{
-      if(event==='TOKEN_REFRESHED'){
-        // トークン更新成功 - セッションだけ更新してリロード不要
-        setSession(session);
+      // TOKEN_REFRESHED / INITIAL_SESSION はセッション更新のみ（画面リセットしない）
+      if(event==='TOKEN_REFRESHED'||event==='INITIAL_SESSION'){
+        if(session)setSession(session);
         return;
       }
+      // ログアウト・セッション切れのみ画面をリセット
       if(event==='SIGNED_OUT'||!session){
         setSession(null);setIsAdmin(false);setLoading(false);
         return;
       }
-      setSession(session);
-      if(session)init(session);
-      else setLoading(false);
+      // 初回ログイン時のみinit
+      if(!initialized){
+        initialized=true;
+        setSession(session);
+        init(session);
+      } else {
+        setSession(session);
+      }
     });
 
-    // 10分ごとにセッション確認・自動更新
+    // 10分ごとにセッション確認（画面はリセットしない）
     const timer=setInterval(async()=>{
-      const {data:{session}}=await sbClient.auth.getSession();
-      if(!session){
-        setSession(null);setIsAdmin(false);
+      const {error}=await sbClient.auth.refreshSession();
+      if(error){
+        // リフレッシュ失敗時のみログアウト
+        const {data:{session}}=await sbClient.auth.getSession();
+        if(!session){setSession(null);setIsAdmin(false);}
       }
     }, 10*60*1000);
 
