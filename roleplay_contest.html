@@ -80,14 +80,20 @@ const e=React.createElement;
 // ─── Supabase ────────────────────────────────────────────────
 const SB_URL="https://hcqjfylgsxbiglpnwgyp.supabase.co";
 const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjcWpmeWxnc3hiaWdscG53Z3lwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE4NDkyNDIsImV4cCI6MjA5NzQyNTI0Mn0.l3Avkl5UJaj0XSWkHfdOTYCv7-rx94QtNpquNV0X6oY";
-const sbClient=window.supabase.createClient(SB_URL,SB_KEY,{auth:{flowType:'pkce',autoRefreshToken:true,detectSessionInUrl:true}});
+const sbClient=window.supabase.createClient(SB_URL,SB_KEY,{auth:{flowType:'pkce',autoRefreshToken:true,detectSessionInUrl:true,persistSession:true}});
 
 async function sbQ(table,query={}){
   let q=sbClient.from(table).select(query.select||"*");
   if(query.eq)Object.entries(query.eq).forEach(([k,v])=>q=q.eq(k,v));
   if(query.order)q=q.order(query.order,{ascending:true});
   const {data,error}=await q;
-  if(error)throw error;
+  if(error){
+    if(error.code==='PGRST301'||error.message?.includes('JWT')){
+      // JWTトークン期限切れ → セッション更新を試みる
+      await sbClient.auth.refreshSession();
+    }
+    throw error;
+  }
   return data;
 }
 async function sbInsert(table,body){
@@ -624,12 +630,31 @@ function App(){
       if(session)init(session);
       else setLoading(false);
     });
-    const {data:{subscription}}=sbClient.auth.onAuthStateChange((_,session)=>{
+
+    const {data:{subscription}}=sbClient.auth.onAuthStateChange((event,session)=>{
+      if(event==='TOKEN_REFRESHED'){
+        // トークン更新成功 - セッションだけ更新してリロード不要
+        setSession(session);
+        return;
+      }
+      if(event==='SIGNED_OUT'||!session){
+        setSession(null);setIsAdmin(false);setLoading(false);
+        return;
+      }
       setSession(session);
       if(session)init(session);
-      else{setLoading(false);setIsAdmin(false);}
+      else setLoading(false);
     });
-    return ()=>subscription.unsubscribe();
+
+    // 10分ごとにセッション確認・自動更新
+    const timer=setInterval(async()=>{
+      const {data:{session}}=await sbClient.auth.getSession();
+      if(!session){
+        setSession(null);setIsAdmin(false);
+      }
+    }, 10*60*1000);
+
+    return ()=>{subscription.unsubscribe();clearInterval(timer);};
   },[]);
 
   async function init(sess){
@@ -658,7 +683,15 @@ function App(){
       e(Spinner,{size:28}),e("p",{style:{fontSize:14}},"読み込み中…")
     );
   }
-  if(!session)return e(LoginScreen);
+  if(!session){
+    return e(React.Fragment,null,
+      session===null&&e("div",{style:{background:"var(--amber-bg)",border:"1px solid var(--amber-border)",borderRadius:0,padding:"10px 20px",textAlign:"center",fontSize:13,color:"var(--amber)"}},
+        e("i",{className:"ti ti-clock",style:{marginRight:6,fontSize:14}}),
+        "セッションが期限切れになりました。再度サインインしてください。"
+      ),
+      e(LoginScreen)
+    );
+  }
 
   const props={setScreen,participants,setParticipants,allScores,setAllScores,isAdmin,user:session.user};
   return e("div",null,
