@@ -544,6 +544,7 @@ function JudgeScreen({setScreen,participants,allScores,setAllScores,user}){
 // ─── Results Screen ──────────────────────────────────────────
 function ResultsScreen({setScreen,participants,setParticipants,allScores,setAllScores,isAdmin}){
   const [tab,setTab]=useState("all");const[loading,setLoading]=useState(false);
+  const [previewMode,setPreviewMode]=useState(false); // 外部プレビューモード
   async function refresh(){
     setLoading(true);
     try{
@@ -562,7 +563,7 @@ function ResultsScreen({setScreen,participants,setParticipants,allScores,setAllS
   }
   useEffect(()=>{refresh();},[]);
 
-  const allResults=( tab==="all"?participants:participants.filter(p=>(p.pattern||"kaitori")===tab) )
+  const allResults=(tab==="all"?participants:participants.filter(p=>(p.pattern||"kaitori")===tab))
     .map(p=>{
       const ptn=p.pattern||"kaitori";
       const judgeEntries=Object.entries(allScores[p.id]||{}).map(([judge,v])=>({judge,total:totSc(v.scores||{},ptn),scores:v.scores||{},comment:v.comment||""}));
@@ -570,21 +571,29 @@ function ResultsScreen({setScreen,participants,setParticipants,allScores,setAllS
       return{...p,ptn,judgeEntries,avg};
     }).sort((a,b)=>(b.avg||0)-(a.avg||0));
 
-  // 外部ユーザーはshow_in_results===trueの参加者のTOP3のみ
-  const results=isAdmin
-    ?allResults
-    :allResults.filter(p=>p.show_in_results===true).slice(0,3);
+  // 外部ユーザー or 管理者プレビューモード: show_in_results===trueのTOP3のみ
+  const showAsExternal=!isAdmin||previewMode;
+  const results=showAsExternal
+    ?allResults.filter(p=>p.show_in_results===true).slice(0,3)
+    :allResults;
 
   return e("div",{className:"fadeIn",style:{padding:"0 20px"}},
     e("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingTop:16}},
       e(BackBtn,{onClick:()=>setScreen("home")}),
-      e("h2",{style:{fontSize:18,fontWeight:700,flex:1}},isAdmin?"集計結果":"🏆 TOP3"),
-      isAdmin&&e("span",{className:"badge badge-success",style:{marginRight:4}},e("i",{className:"ti ti-lock-open",style:{fontSize:11,marginRight:3}}),"管理者"),
+      e("h2",{style:{fontSize:18,fontWeight:700,flex:1}},previewMode?"👁 外部プレビュー":"集計結果"),
+      isAdmin&&!previewMode&&e("span",{className:"badge badge-success",style:{marginRight:4}},e("i",{className:"ti ti-lock-open",style:{fontSize:11,marginRight:3}}),"管理者"),
+      isAdmin&&e("button",{onClick:()=>setPreviewMode(!previewMode),className:"btn",style:{padding:"6px 10px",fontSize:12,background:previewMode?"var(--amber)":"var(--surface2)",color:previewMode?"#fff":"var(--text2)",border:`1px solid ${previewMode?"var(--amber)":"var(--border2)"}`,marginRight:4}},
+        e("i",{className:`ti ${previewMode?"ti-eye-off":"ti-eye"}`,style:{fontSize:13}}),previewMode?" 管理者表示に戻す":" 外部プレビュー"
+      ),
       e("button",{onClick:refresh,disabled:loading,className:"btn btn-outline",style:{padding:"6px 10px",fontSize:13}},loading?e(Spinner):e("i",{className:"ti ti-refresh",style:{fontSize:14}})," 更新")
     ),
-    isAdmin&&e("div",{style:{background:"var(--blue-bg)",border:"1px solid var(--blue-border)",borderRadius:9,padding:"8px 14px",marginBottom:10,fontSize:12,color:"var(--blue)"}},
+    previewMode&&e("div",{style:{background:"var(--amber-bg)",border:"1px solid var(--amber-border)",borderRadius:9,padding:"8px 14px",marginBottom:10,fontSize:12,color:"var(--amber)"}},
       e("i",{className:"ti ti-eye",style:{marginRight:6,fontSize:13}}),
-      "「目」アイコンで外部ユーザーへの表示/非表示を切り替えられます"
+      "外部プレビュー中 — 外部ユーザーにはこの画面が表示されます（表示ON・TOP3のみ）"
+    ),
+    isAdmin&&!previewMode&&e("div",{style:{background:"var(--blue-bg)",border:"1px solid var(--blue-border)",borderRadius:9,padding:"8px 14px",marginBottom:10,fontSize:12,color:"var(--blue)"}},
+      e("i",{className:"ti ti-eye",style:{marginRight:6,fontSize:13}}),
+      "「目」アイコンで外部ユーザーへの表示/非表示を切り替え。「外部プレビュー」で外部からの見え方を確認できます"
     ),
     e("div",{style:{display:"flex",gap:6,marginBottom:12}},
       [["all","すべて"],["kaitori","買取"],["hanbai","販売"]].map(([v,l])=>e("button",{key:v,onClick:()=>setTab(v),className:"tab"+(tab===v?" active":"")},l))
@@ -602,7 +611,7 @@ function ResultsScreen({setScreen,participants,setParticipants,allScores,setAllS
             e("div",{style:{fontWeight:700,fontSize:16,display:"flex",alignItems:"center",gap:6}},p.name,e(PatBadge,{pat:p.ptn})),
             e("div",{style:{fontSize:12,color:"var(--text3)",marginTop:2}},e(ModeTag,{t:p.type})," · ",p.judgeEntries.length,"名が採点")
           ),
-          isAdmin&&e("button",{onClick:()=>toggleVisibility(p),title:isHidden?"外部に表示する":"外部から非表示にする",style:{width:32,height:32,border:`1px solid ${isHidden?"var(--border2)":"var(--green-border)"}`,borderRadius:8,background:isHidden?"var(--surface2)":"var(--green-bg)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
+          isAdmin&&!previewMode&&e("button",{onClick:()=>toggleVisibility(p),title:isHidden?"外部に表示する":"外部から非表示にする",style:{width:32,height:32,border:`1px solid ${isHidden?"var(--border2)":"var(--green-border)"}`,borderRadius:8,background:isHidden?"var(--surface2)":"var(--green-bg)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},
             e("i",{className:`ti ${isHidden?"ti-eye-off":"ti-eye"}`,style:{fontSize:15,color:isHidden?"var(--text3)":"var(--green)"}})
           ),
           p.avg!=null&&e("div",{style:{textAlign:"right"}},
