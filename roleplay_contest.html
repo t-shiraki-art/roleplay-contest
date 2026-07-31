@@ -442,7 +442,8 @@ function JudgeScreen({setScreen,participants,allScores,setAllScores,user}){
   function applyAI(){if(!aiResult)return;const ns={};crit.forEach(c=>{if(aiResult[c.id]!==undefined)ns[c.id]=Math.min(c.max,Math.max(0,Number(aiResult[c.id])||0));});setScores(ns);if(aiResult.comment)setComment(aiResult.comment);setShowAI(false);}
 
   if(!selPid){
-    const list=filterPat==="all"?participants:participants.filter(p=>(p.pattern||"kaitori")===filterPat);
+    const list=(filterPat==="all"?participants:participants.filter(p=>(p.pattern||"kaitori")===filterPat))
+      .filter(p=>p.show_in_results===true);
     return e("div",{className:"fadeIn",style:{padding:"0 20px"}},
       e("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingTop:16}},
         e(BackBtn,{onClick:()=>setScreen("home")}),
