@@ -570,10 +570,10 @@ function ResultsScreen({setScreen,participants,setParticipants,allScores,setAllS
       return{...p,ptn,judgeEntries,avg};
     }).sort((a,b)=>(b.avg||0)-(a.avg||0));
 
-  // 外部ユーザーはshow_in_results=trueのTOP3のみ
+  // 外部ユーザーはshow_in_results===trueの参加者のTOP3のみ
   const results=isAdmin
     ?allResults
-    :allResults.filter(p=>p.show_in_results!==false).slice(0,3);
+    :allResults.filter(p=>p.show_in_results===true).slice(0,3);
 
   return e("div",{className:"fadeIn",style:{padding:"0 20px"}},
     e("div",{style:{display:"flex",alignItems:"center",gap:10,marginBottom:14,paddingTop:16}},
@@ -743,7 +743,7 @@ function App(){
       screen==="home"&&e(HomeScreen,props),
       screen==="admin"&&(isAdmin?e(AdminScreen,props):e(HomeScreen,props)),
       screen==="judge"&&e(JudgeScreen,props),
-      screen==="results"&&e(ResultsScreen,props)
+      screen==="results"&&(isAdmin?e(ResultsScreen,props):e(HomeScreen,props))
     )
   );
 }
