@@ -12,30 +12,25 @@
   --border:#E2E8F0;--border2:#CBD5E1;
   --text:#0F172A;--text2:#475569;--text3:#94A3B8;
   --blue:#2563EB;--blue-bg:#EFF6FF;--blue-border:#BFDBFE;
-  --amber:#D97706;--amber-bg:#FFFBEB;--amber-border:#FDE68A;
-  --radius:10px;--shadow:0 1px 3px rgba(0,0,0,.08);
+  --amber:#D97706;--amber-bg:#FFFBEB;
 }
 body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
-.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 1px 3px rgba(0,0,0,.06)}
 .container{max-width:720px;margin:0 auto;padding:20px 16px}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);margin-bottom:16px}
 .badge{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px}
 .badge-kaitori{background:var(--amber-bg);color:var(--amber)}
 .badge-hanbai{background:var(--blue-bg);color:var(--blue)}
-.tabs{display:flex;gap:6px;margin-bottom:16px}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
 .tab{flex:1;padding:8px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit}
 .tab.active{background:var(--blue-bg);border-color:var(--blue-border);color:var(--blue);font-weight:600}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spin{animation:spin .8s linear infinite;display:inline-block}
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.fadeIn{animation:fadeIn .2s ease}
 </style>
 </head>
 <body>
-
 <div class="topbar">
-  <img id="logo" src="" alt="カーセブン" style="height:28px;object-fit:contain;display:none">
-  <span id="logoFallback" style="font-size:16px;font-weight:700;color:var(--blue)">カーセブン</span>
+  <span style="font-size:15px;font-weight:700;color:var(--blue)">カーセブン</span>
   <span style="font-size:15px;font-weight:600;flex:1">ロープレコンテスト 動画閲覧</span>
   <span style="font-size:11px;color:var(--text3);background:var(--surface2);border:1px solid var(--border);padding:2px 8px;border-radius:8px">閲覧専用</span>
 </div>
@@ -56,101 +51,81 @@ const sb=window.supabase.createClient(SB_URL,SB_KEY);
 
 const PL={kaitori:"買取",hanbai:"販売"};
 const TYPE_LABEL={online:"🖥 WEB",offline:"🤝 対面",hybrid:"🔀 ハイブリッド"};
+let allParticipants=[];
+let currentTab="all";
 
 function toEmbed(url){
   if(!url)return null;
   const d=url.match(/drive\.google\.com\/file\/d\/([^/?#\s]+)/);
-  if(d)return`https://drive.google.com/file/d/${d[1]}/preview`;
+  if(d)return"https://drive.google.com/file/d/"+d[1]+"/preview";
   const y=url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
-  if(y)return`https://www.youtube.com/embed/${y[1]}`;
+  if(y)return"https://www.youtube.com/embed/"+y[1];
   return url;
-}
-
-let allParticipants=[];
-let currentTab="all";
-
-function renderBadge(pattern){
-  const cls=pattern==="kaitori"?"badge-kaitori":"badge-hanbai";
-  return `<span class="badge ${cls}">${PL[pattern]||pattern}</span>`;
 }
 
 function renderCard(p){
   const embed=toEmbed(p.url);
+  const pat=p.pattern||"kaitori";
+  const badgeCls=pat==="kaitori"?"badge-kaitori":"badge-hanbai";
   const typeLabel=TYPE_LABEL[p.type]||"";
-  return `
-    <div class="card fadeIn">
-      <div style="padding:16px 18px;display:flex;align-items:center;gap:10px;border-bottom:${embed?'1px solid var(--border)':'none'}">
-        <div style="flex:1">
-          <div style="font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            ${p.name}
-            ${renderBadge(p.pattern||'kaitori')}
-          </div>
-          <div style="font-size:12px;color:var(--text3);margin-top:3px">${typeLabel}</div>
-        </div>
-        ${!embed?`<div style="font-size:12px;color:var(--text3);background:var(--surface2);padding:4px 10px;border-radius:8px;border:1px solid var(--border)"><i class="ti ti-video-off" style="margin-right:4px;font-size:12px"></i>動画なし</div>`:''}
-      </div>
-      ${embed?`<div style="background:#000;aspect-ratio:16/9;position:relative">
-        <iframe src="${embed}" style="width:100%;height:100%;position:absolute;top:0;left:0;border:none" allowfullscreen allow="autoplay"></iframe>
-      </div>`:''}
-    </div>`;
+  return '<div class="card">'+
+    '<div style="padding:16px 18px;display:flex;align-items:center;gap:10px;border-bottom:'+(embed?"1px solid var(--border)":"none")+'">'+
+      '<div style="flex:1">'+
+        '<div style="font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
+          p.name+' <span class="badge '+badgeCls+'">'+(PL[pat]||pat)+'</span>'+
+        '</div>'+
+        '<div style="font-size:12px;color:var(--text3);margin-top:3px">'+typeLabel+'</div>'+
+      '</div>'+
+      (!embed?'<div style="font-size:12px;color:var(--text3);background:var(--surface2);padding:4px 10px;border-radius:8px;border:1px solid var(--border)">動画なし</div>':'')+
+    '</div>'+
+    (embed?'<div style="background:#000;aspect-ratio:16/9;position:relative"><iframe src="'+embed+'" style="width:100%;height:100%;position:absolute;top:0;left:0;border:none" allowfullscreen allow="autoplay"></iframe></div>':'')+
+  '</div>';
 }
 
 function render(){
   const filtered=currentTab==="all"
     ?allParticipants
-    :allParticipants.filter(p=>(p.pattern||"kaitori")===currentTab);
-
+    :allParticipants.filter(function(p){return (p.pattern||"kaitori")===currentTab;});
   const app=document.getElementById("app");
-
   if(filtered.length===0){
-    app.innerHTML=`
-      <div style="text-align:center;padding:60px 20px;color:var(--text3)">
-        <i class="ti ti-video" style="font-size:40px;display:block;margin-bottom:12px"></i>
-        <p style="font-size:14px">動画が登録されていません</p>
-      </div>`;
+    app.innerHTML='<div style="text-align:center;padding:60px 20px;color:var(--text3)"><i class="ti ti-video" style="font-size:40px;display:block;margin-bottom:12px"></i><p>動画が登録されていません</p></div>';
     return;
   }
-
-  app.innerHTML=`
-    <div class="tabs">
-      <button class="tab ${currentTab==='all'?'active':''}" onclick="setTab('all')">すべて</button>
-      <button class="tab ${currentTab==='kaitori'?'active':''}" onclick="setTab('kaitori')">買取</button>
-      <button class="tab ${currentTab==='hanbai'?'active':''}" onclick="setTab('hanbai')">販売</button>
-    </div>
-    <p style="font-size:12px;color:var(--text3);margin-bottom:12px">${filtered.length}件</p>
-    ${filtered.map(p=>renderCard(p)).join('')}`;
+  var html='<div class="tabs">'+
+    '<button class="tab'+(currentTab==="all"?" active":"")+ '" onclick="setTab(\'all\')">すべて</button>'+
+    '<button class="tab'+(currentTab==="kaitori"?" active":"")+ '" onclick="setTab(\'kaitori\')">買取</button>'+
+    '<button class="tab'+(currentTab==="hanbai"?" active":"")+ '" onclick="setTab(\'hanbai\')">販売</button>'+
+  '</div>'+
+  '<p style="font-size:12px;color:var(--text3);margin-bottom:12px">'+filtered.length+'件</p>';
+  for(var i=0;i<filtered.length;i++){html+=renderCard(filtered[i]);}
+  app.innerHTML=html;
 }
 
 function setTab(tab){
   currentTab=tab;
   render();
-  window.scrollTo({top:0,behavior:'smooth'});
+  window.scrollTo({top:0,behavior:"smooth"});
 }
 
 async function init(){
   try{
-    // ロゴ取得
-    const {data:cfg}=await sb.from("rp_settings").select("value").eq("key","logo_base64").single();
-    // ロゴはbase64で保存されていないためスキップ
-
-    // 参加者取得（全員）
-    const {data:ps,error}=await sb
+    // 参加者を全員取得（フィルターなし）
+    const res=await sb
       .from("rp_participants")
-      .select("id,name,url,type,pattern,show_in_results")
-      
+      .select("id,name,url,type,pattern")
       .order("created_at",{ascending:true});
 
-    if(error)throw error;
-    allParticipants=ps||[];
+    if(res.error)throw res.error;
+    allParticipants=res.data||[];
 
     document.getElementById("loading").style.display="none";
     document.getElementById("app").style.display="block";
     render();
   }catch(e){
-    document.getElementById("loading").innerHTML=`
-      <i class="ti ti-alert-circle" style="font-size:28px;display:block;margin-bottom:12px;color:#DC2626"></i>
-      <p style="color:#DC2626">読み込みに失敗しました</p>
-      <p style="font-size:12px;color:var(--text3);margin-top:8px">${e.message}</p>`;
+    document.getElementById("loading").innerHTML=
+      '<i class="ti ti-alert-circle" style="font-size:28px;display:block;margin-bottom:12px;color:#DC2626"></i>'+
+      '<p style="color:#DC2626">読み込みに失敗しました</p>'+
+      '<p style="font-size:12px;color:var(--text3);margin-top:8px">'+e.message+'</p>';
   }
 }
 
