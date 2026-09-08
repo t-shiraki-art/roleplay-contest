@@ -133,11 +133,11 @@ async function init(){
     const {data:cfg}=await sb.from("rp_settings").select("value").eq("key","logo_base64").single();
     // ロゴはbase64で保存されていないためスキップ
 
-    // 参加者取得（show_in_results=trueのみ）
+    // 参加者取得（全員）
     const {data:ps,error}=await sb
       .from("rp_participants")
       .select("id,name,url,type,pattern,show_in_results")
-      .eq("show_in_results",true)
+      
       .order("created_at",{ascending:true});
 
     if(error)throw error;
